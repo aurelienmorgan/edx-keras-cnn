@@ -1,0 +1,1825 @@
+---
+title: |
+  | \pagenumbering{gobble} <!-- ends page numbering "`r Sys.Date()`" -->\vspace{3.5in}Entry-level Convolutional Neural Networks 
+  | _\LARGE(keras with 'tensorflow over local GPU' as a back-end in R)\normalsize_
+subtitle: "Stepping into CNN, one toe at a time"
+date: "2019-04-29"
+author: "Aurélien-Morgan"
+output:
+  pdf_document:
+    toc: false
+    toc_depth: 2
+    number_sections: true
+    keep_tex: true
+    fig_width: 7
+    fig_height: 6
+    fig_caption: true
+    fig_crop: false
+    df_print: kable
+    highlight: tango
+    pandoc_args: [
+      "--natbib"
+    ]
+
+graphics: yes
+fontsize: 10pt
+linkcolor: blue
+urlcolor: cyan
+geometry: margin=1in
+documentclass: article
+classoption: twosided
+
+header-includes:
+  - \hypersetup{
+      pdfauthor={Aurélien-Morgan},
+      pdftitle={},
+      pdfsubject={},
+      pdfkeywords={},
+      pdfproducer={MiKTeX pdfTeX with hyperref},
+      pdfcreator={PdfLaTeX},
+      bookmarksnumbered=true,
+      bookmarksopen=true,
+      bookmarksopenlevel=2,
+      pdfstartview=FitH,
+      pdfpagelayout=OneColumn,
+      unicode=true,
+      bookmarks=true,
+      pdfpagemode=UseOutlines,
+      pdfinfo={
+        CreationDate={D:20190301172300}
+      },
+      citecolor=magenta
+    }
+
+# for 'vector' annotation in LaTex ; @see 'https://tex.stackexchange.com/questions/163279/how-can-i-type-formula-cosine-of-two-vectors-nice'
+  - \usepackage{esvect}
+
+  - \usepackage[table]{xcolor}
+  - \definecolor{amccolor}{RGB}{175,238,238}
+  - \usepackage{wrapfig}
+
+# workaround to declare parameters (such as "valign") to 'includegraphics'
+# @see 'https://stackoverflow.com/questions/55345679/kable-vertical-alignment-does-not-work-with-pdf-output#55362668'
+  - \usepackage[export]{adjustbox}
+
+# allow "vertical centering" of kable cells ; @see 'https://stackoverflow.com/questions/49143690/rmarkdown-kable-vertically-align-cells#49184186'
+  - \usepackage{multirow}
+
+# fix the "! Undefined control sequence. l.115 \toprule" issue with the r 'kableExtra ' package ; @see 'https://github.com/rstudio/rmarkdown/issues/1384#issuecomment-400106730'
+  - \usepackage{booktabs}
+
+# allow for portrait/lanscape pages switch ; @see 'https://stackoverflow.com/questions/25849814/rstudio-rmarkdown-both-portrait-and-landscape-layout-in-a-single-pdf#27334272'
+  - \usepackage{lscape}
+  - \usepackage{pdflscape}
+
+  - <!-- remove margin for figures and tables captions ; @see 'https://tex.stackexchange.com/questions/94016/how-to-reduce-space-between-image-and-its-caption#94018' -->
+  - \usepackage[font=small,skip=0pt]{caption}
+  - <!-- fix the "'fig' r tags fixed at top of pages" issue ; @see 'https://stackoverflow.com/questions/29696172/how-to-hold-figure-position-with-figure-caption-in-pdf-output-of-knitr#51608212' -->
+  - \usepackage{float}
+  - \floatplacement{figure}{H}
+
+  - \setlength{\columnsep}{18pt}
+  - \usepackage{multicol}
+  - <!-- fix to the multicol/pandoc compatibility issue ; @see 'https://stackoverflow.com/questions/40982836/latex-multicolumn-block-in-pandoc-markdown#41005796' -->
+  - \newcommand{\hideFromPandoc}[1]{#1}
+  - \hideFromPandoc{
+      \let\Begin\begin
+      \let\Begin\begin
+      \let\End\end
+      \let\Vspace\vspace
+    }
+
+  - \usepackage{fancyhdr}
+  - <!-- declare custom 'firststyle' (footer) -->
+  - \fancypagestyle{firststyle} {
+      \fancyhf{}
+      \newcommand {\changefont} {\fontsize{6}{8}\selectfont}
+      \pagestyle{fancy}
+      \renewcommand{\headrulewidth}{0pt}
+      \fancyfoot[LE, LO]{\begin{minipage}[c]{3cm}\end{minipage}}
+      \fancyfoot[CE, CO]{\begin{minipage}[c]{.6\textwidth}\changefont Harvard Executive Education – Data Science Professional Certification Program\\\begin{center}– Capstone Project 2 / 2 - free subject matter -\end{center}\end{minipage}}
+        \IfFileExists{./harvardx_logo_100.jpg}{
+          \fancyfoot[RE, RO]{\begin{minipage}[c]{3cm}\includegraphics[]{./harvardx_logo_100.jpg}\end{minipage}}
+        }{
+          `r if( !file.exists( "./harvardx_logo_100.jpg" ) ) try( download.file(url = "https://www.edx.org/sites/default/files/upload/harvardx_logo_100.jpg", destfile = "harvardx_logo_100.jpg", mode = 'wb') )`
+            \fancyfoot[RE, RO]{\begin{minipage}[c]{3cm}\end{minipage}}
+        }
+    }
+  - \fancypagestyle{plain}{\pagestyle{firststyle}} <!-- apply custom 'firststyle' (footer) to cover page -->
+  - \setcounter{section}{-1} <!-- start numbering sections at '0' -->
+  - \renewcommand{\contentsname}{}\vspace{-0.5cm}
+  - \renewcommand{\listfigurename}{}\vspace{-0.5cm}
+  - \renewcommand{\listtablename}{}\vspace{-0.5cm}
+  - \renewcommand\refname{}\vspace{-0.5cm}
+  - \RequirePackage{filecontents}
+
+biblio-style: unsrt <!-- to allow for 'numbered' citations/references -->
+bibliography: Reportbib
+
+params:
+  dummy: <!-- centralizes inputs -->
+
+---
+
+
+
+<!--
+amc_pdf_print()
+-->
+
+
+
+<!--
+REQUIRES minimal MiKTeX installation
+with 'upquote', 'natbib', 'filecontents', 'fancyhdr', 'multicol', 'float', 'caption', 'lscape', 'pdflscape', 'booktabs', 'wrapfig', 'xcolor', 'esvect' and 'multirow'
+packages installed
+-->
+
+
+<!--
+amc_pdf_print( paramsList = list(
+) )
+-->
+
+
+
+
+<style>
+  .main-container {
+    max-width: 120px !important;
+  }
+</style>
+
+
+<!--
+tidy.opts=list(width.cutoff=60, tidy=TRUE)
+-->
+
+```{r global_options, R.options=knitr::opts_chunk$set( warning=FALSE, message=FALSE, echo = TRUE, dev = 'pdf', cache = FALSE, results=TRUE, include=TRUE, eval=TRUE ) }
+```
+
+```{r echo = FALSE, results = 'hide', include = FALSE, message = FALSE, warning = FALSE }
+if( !require( tidyverse ) ) { install.packages( "tidyverse" ) } ; suppressWarnings(suppressMessages(suppressPackageStartupMessages( library( tidyverse, quietly = TRUE ))))
+if( !require( caret ) ) { install.packages( "caret" ) } ; suppressWarnings(suppressMessages(suppressPackageStartupMessages( library( caret, quietly = TRUE )))) # for 'confusion matrix'
+if( !require( data.table ) ) { install.packages( "data.table" ) } ; suppressWarnings(suppressMessages(suppressPackageStartupMessages( library( data.table, quietly = TRUE ))))
+if( !require( gridExtra ) ) { install.packages( "gridExtra" ) } ; suppressWarnings(suppressMessages(suppressPackageStartupMessages( library( gridExtra, quietly = TRUE )))) # to organize plots
+if( !require( knitr ) ) { install.packages( "knitr" ) } ; suppressWarnings(suppressMessages(suppressPackageStartupMessages( library( knitr, quietly = TRUE ))))
+options( kableExtra.latex.load_packages = FALSE ) # !! VERY IMPORTNAT !!
+if( !require( kableExtra  ) ) { install.packages( "kableExtra " ) } # DO NOT LOAD !
+```
+
+```{r echo = FALSE }
+
+windowsFonts(
+  "Helvetica" = windowsFont( "Helvetica" ) )
+theme_amc <- function( base_size_ = 9 ) {
+  # my custom ggplot2 theme
+  theme_bw( base_size = base_size_
+            , base_family = "Helvetica" ) %+replace% 
+    theme(
+      panel.grid.minor = element_blank(), panel.border = element_blank()
+      , axis.line = element_line( colour = "black" )
+    )
+}
+theme_set( theme_amc() ) # set 'theme_amc' as the 'session' theme
+#theme_set( theme_gray() ) # default ggplot2 theme
+
+```
+
+
+\newpage
+# Table of Content {.unnumbered}
+\tableofcontents
+\vspace{1.5cm}
+
+## List of Figures {.unnumbered}
+\listoffigures
+\vspace{1.5cm}
+
+## List of Tables {.unnumbered}
+\listoftables
+\newpage
+
+\pagenumbering{arabic} <!-- starts page numbering -->
+
+<!--
+amc_pdf_print()
+-->
+
+# Preambule
+
+
+There are quite a few challenges to adopting deep learning.
+First and foremost, it comprises rapidly evolving algorithms. Indeed, deep learning algorithms continue to improve (and very quickly), so keeping up with all the latest advances can require significant time & effort.
+In addition, training deep neural networks requires tremendous compute power. So projects shall be planned to take advantage of high performance computing platforms that
+can process large amounts of data quickly.
+
+> A **Graphics processing unit (GPU)** is a highly specilized chipset  designed to rapidly manipulate and alter memory. Its architecture makes it very efficient at matrix computation, paralell processing and mathematically-intensive tasks in general.  
+> A **Central processing unit (CPU)** is designed for more generic multi-purpose usage and is often better equipped for single computations with, for instance, a higher clock speed.  
+> **GPU-accelerated computing** is the employment of a GPU along with a CPU in order to facilitate processing-intensive operations[^id_432].
+
+The **Keras** high-level neural networks API is the second most popular deep learning framework after **Tensorflow** itself.
+We will be using _Keras_ with _Tensorflow_ as a backend[@kerasBackend] and we will run it all on a local GPU[@localGpuTensorFlow]. As **R** is the language of choice for the herein report, we employ the 'keras' R package&nbsp;: an R interface to Keras, hosted on the RStudio GitHub (and on CRAN)[@installRstudioKeras]. The original keras Deep Learning library is written in **Python**, we thus use **Anaconda** as a _Python_ distribution and interface the _rstudio/keras_ package to it.
+
+
+The rstudio/keras package comes with a fairly straighforward set of tutorial pages which allow for rookie data scientists to jump start their swimming the Deep Learning lake&nbsp;: [@rstudioKerasGettingStarted].
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+For the herein report, we implement convolutional neural networks in R thru Python 3.6 (Anaconda) using the Keras wrapper with a Tensorflow backend on a CUDA-enabled NVIDIA GPU (GTX-1060), running in Windows 10 operating system[^id_802].
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+---
+
+
+
+
+[^id_432]: there are quite a few existing packages for GPU Computing with R. If interested,
+you can for instance refer to the two following very valuable sources&nbsp;:[@pguRpackage][@pguComputingR]
+[^id_802]: Installation instructions for such an environment alongside multipe references to helpful related guidance web pages are included in the R source file that encloses the algorithms described in the herein report.
+
+\clearpage
+
+<!--
+amc_pdf_print()
+-->
+
+
+# Introduction
+
+To get an understanding of how a **Convolutional Neural Network (CNN)** and its layers work, one needs a basic understanding of _neural networks_ first.
+
+
+
+```{r echo = FALSE }
+dir.create( "./images", showWarnings = FALSE )
+if( !file.exists( "./images/deep_neural_network.jpg" ) ) try( download.file( url = "https://cdn.ttgtmedia.com/rms/onlineImages/deep_neural_network.jpg", destfile = "./images/deep_neural_network.jpg", mode = 'wb' ) )
+```
+
+\Begin{wrapfigure}{l}{0.4\textwidth}
+```{r echo = FALSE, fig.show = "asis", fig.keep = "high" }
+knitr::include_graphics( "./images/deep_neural_network.jpg", dpi = 300 )
+```
+\caption{\label{fig:fig_dnn}Deep Neural Network}
+\End{wrapfigure}
+
+Neural networks are sometimes described in terms of their depth, including how many **layers**[^id_749] they have between input and output (see figure \ref{fig:fig_dnn} ; source&nbsp;: [@dnnImage]). This is why the term "neural network" is used almost synonymously with "deep learning".  
+Layers are each made up of several **nodes**[^id_489]. Data is represented by a tensor (i.e. a higher dimensions matrix[^id_582]). During model training, each node _weights_ the importance of input from each of its predecessors. Inputs that contribute to getting right answers are weighted higher. This appropriatedness of answer is measured thanks to a **loss function**.
+
+Adding convolutional layers to a neural network is what turns it into a convolutional neural network. What a convolution layer basically does is detect useful **features**. The layers closer to the input detect lower level features like edges while the ones closer to the output use these features to detect more complex ones like faces[^id_777].
+
+
+CNNs find applications in **time series forecasting** as it is very good at finding local patterns[@cnnWebTrafficForecasting] but \underline{\makebox[0.1in][l]{R}}eccurent \underline{\makebox[0.1in][l]{N}}eural \underline{\makebox[0.1in][l]{N}}etworks are often preferred when data has a sequential structure[@rstudioKerasRnnSunspot][@rstudioKerasRnnTemperature].  
+CNNs (when on top of pre-trained word vectors[^id_529]) are often used in **Natural Language Processing (NLP)** for instance for sentence classification[@cnnSentenceClassif].  
+CNNs can also be employed for **speech recognition**, i.e. recognizing and extracting words/sentences/intonations from within audio data[@cnnSpeechRecognition].  
+Convolutional Neural Networks have become the dominant machine learning approach for **visual object recognition**. In the herein report, we cover two such cases&nbsp;:
+
+* object classification on the cifar-10 images dataset (see the [Objects classification section](#objectsClassifAnchor))
+* style tranfer on one of my personal picture (see the [Style transfer section](#styleTransferAnchor))
+
+
+
+[^id_749]: note that the rstudio/kears package comes with the implementation of many different types layers (Convolutional, Dropout, Recurrent, etc.)&nbsp;: [@rstudioKerasLayers].
+[^id_489]: Neural networks can also be described by the number of hidden nodes the model has or in terms of how many inputs and outputs each node has.
+[^id_582]: if you're keen on getting clarifications on tensors&nbsp;: [@tensorVsMatrix], [@tensorMlVsMath].
+[^id_777]: for more on CNNs, check out this great _edutainment_ post&nbsp;: [@cnnUltimateGuide].
+[^id_529]: popular Tensorflow model for _Vector Representations of Words_[@word2Vec]. Translates words into _neural word embeddings_ vectors (of numbers)[@word2VecBeginner].
+
+
+\clearpage
+
+<!--
+amc_pdf_print()
+-->
+
+# Objects classification{#objectsClassifAnchor}
+
+```{r cifar10_r_objects, echo = FALSE }
+
+## #######################################################
+## 'duration_string' function                           ##
+##########################################################
+# convenience method to custom-format duration strings   #
+##########################################################
+duration_string <- function(
+  time_start
+  , time_end = proc.time()
+) {
+  td <- as.POSIXlt( ( time_end - time_start )[ "elapsed" ]
+                    , origin = lubridate::origin )
+  round( second( td ) ) -> second( td )
+  td <- seconds_to_period( td )
+  return( tolower( td ) )
+}
+##########################################################
+
+
+
+
+## ###################################################
+##          'amc_dataset_cifar10' function          ##
+######################################################
+# convenience method to load the 'cifar10' dataset   #
+# into an in-memory R object equal in every aspect   #
+# to the one returned by the'keras::dataset_cifar10' #
+# function.                                          #
+# (so that someone who doesn' want to install        #
+# the 'rstudio/keras' package can still navigate     #
+# that dataset in R)                                 #
+######################################################
+amc_dataset_cifar10 <- function(
+) {
+  {
+    # Download if not already done during a previous run
+    dir.create( "~/.keras/datasets/cifar-10-batches-py/"
+                , recursive = TRUE, showWarnings = FALSE )
+    if( !file.exists( "~/.keras/datasets/cifar-10-batches-py.tar.gz" ) ) {
+      t1 <- proc.time()
+      cat( "Downloading source data.." )
+      download.file(url = "http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz"
+                    , destfile = "~/.keras/datasets/cifar-10-batches-py.tar.gz"
+                    , mode = 'wb')
+      cat( " done (", duration_string( t1 ), ").\n" )
+    }
+    if( !file.exists( "~/.keras/datasets/cifar-10-batches-py/data_batch_1" ) ) {
+      t1 <- proc.time()
+      cat( "Decompressing source data.." )
+      unzip( "~/.keras/datasets/cifar-10-batches-py.tar.gz"
+             , exdir = "~/.keras/datasets/cifar-10-batches-py" )
+      cat( " done (", duration_string( t1 ), ").\n" )
+    }
+  }
+  
+  result <- list()
+  {
+    # A much corrected version of the solution introduced there =>
+    # @see 'https://stackoverflow.com/questions/32113942/importing-cifar-10-data-set-to-r'
+    
+    t1 <- proc.time()
+    cat( paste0(
+      "Reading binary source files :\n|"
+      , paste( rep( "=", 6 * ( 5 + 1 ) ), collapse = "" )
+      , "|\n|" ) )
+    files <-
+      c(
+        sapply(1:5, function(f) paste0(
+          "~/.keras/datasets/cifar-10-batches-py/data_batch_"
+          , f
+        ) )
+        , "~/.keras/datasets/cifar-10-batches-py/test_batch" )
+    result$train$x <- array( NA_integer_, dim = c( 50000, 32, 32, 3 ) )
+    result$train$y <- matrix( data = NA_integer_, nrow = 50000, ncol = 1 )
+    result$test$x <- array( NA_integer_, dim = c( 10000, 32, 32, 3 ) )
+    result$test$y <- matrix( data = NA_real_, nrow = 10000, ncol = 1 )
+    file_imgCount = 10000 # Set to 10000 to retrieve all images per file to memory
+    
+    # Cycle through all 5 binary files
+    for( f in 1:6 ) {
+      to.read <-
+        file(
+          files[ f ]
+          , "rb" )
+      
+      # accounting for a 'labels' block header
+      # "batch_label training batch 1 of 5 labels"
+      # which we skip over :
+      readBin(to.read, integer(), endian = "big", size = 1
+              , n = ifelse( f == 6, 59, 60 ) )
+      
+      ## labels block ##
+      l <- readBin(
+        to.read, integer(), endian = "big", size = 1
+        , n = 2 * ( file_imgCount + ( file_imgCount / 1000 ) ) )
+      # records are separated by a "75" value, which we ignore
+      # additionally, every 1,000 records,
+      # there is a "101" & "40" separator, which we also ignore
+      l[ seq(2, length( l ), 2 ) ] -> l
+      l[ -seq(1001, length( l ), 1001 ) ] -> l
+      cat( "-" )
+      
+      # accounting for a 'data' block header
+      # "data cnumpy.core.multiarray _reconstruct cnumpy array numpy type"
+      # which we skip over :
+      readBin(
+        to.read, integer(), size = 1, n = 138, endian = "big" )
+      
+      ## data block ##
+      for( i in 1:file_imgCount ) {
+        # Cycle through all 'file_imgCount' images
+        
+        r <- as.integer( readBin(
+          to.read, raw(), endian = "big", size = 1, n = 1024 ) )
+        g <- as.integer( readBin(
+          to.read, raw(), endian = "big", size = 1, n = 1024 ) )
+        b <- as.integer( readBin(
+          to.read, raw(), endian = "big", size = 1, n = 1024 ) )
+        
+        index <- file_imgCount * ( f - 1 ) + i
+        if( f == 6 ) {
+          result$test$x[ i, , , ] <-
+            sapply(
+              list(
+                matrix( r, ncol = 32, byrow = TRUE )
+                ,  matrix( g, ncol = 32, byrow = TRUE )
+                ,  matrix( b, ncol = 32, byrow = TRUE )
+              )
+              , identity, simplify = "array" )
+        } else {
+          result$train$x[ index, , , ] <-
+            sapply(
+              list(
+                matrix( r, ncol = 32, byrow = TRUE )
+                ,  matrix( g, ncol = 32, byrow = TRUE )
+                ,  matrix( b, ncol = 32, byrow = TRUE )
+              )
+              , identity, simplify = "array" )
+        }
+        
+        if( i %% ceiling( file_imgCount / 5 ) == 0 &
+            !( f == 6 & i == file_imgCount ) ) cat( "-" )
+      }
+      if( f == 6 ) {
+        l ->
+          result$test$y[
+            , 1 ]
+      } else {
+        l ->
+          result$train$y[
+            ( ( f - 1 ) * file_imgCount + 1 ):
+              ( f * file_imgCount )
+            , 1 ]
+      }
+      
+      close( to.read )
+      rm( l, r, g, b, f, i, index, to.read )
+    }
+    cat( paste0(
+      "-| done (", duration_string( t1 ), ").\n" ) )
+    rm( t1 )
+    # str( result )
+  }
+  return( result )
+}
+######################################################
+# all.equal( amc_dataset_cifar10, keras::dataset_cifar10 ) == > TRUE
+
+
+
+
+##############################
+## SOURCE DATA FORMAT BEGIN ##
+##############################
+{
+  if( require( keras ) ) {
+    cifar10 <- keras::dataset_cifar10()
+  } else {
+    cifar10 <- amc_dataset_cifar10()
+  }
+  # list.files(path = "~/.keras/datasets/cifar-10-batches-py", full.name = TRUE )
+
+
+  # Normalisation
+  mea <- numeric( 3 )
+  sds <- numeric( 3 )
+  for( i in 1:3 ){
+    mea[ i ] <- mean( cifar10$train$x[ , , , i ] )
+    sds[ i ] <- sd( cifar10$train$x[ , , , i ] )
+  
+    cifar10$train$x[ , , , i ] <-
+      ( cifar10$train$x[ , , , i ] - mea[ i ] ) / sds[ i ]
+    cifar10$test$x[ , , , i ] <-
+      ( cifar10$test$x[ , , , i ] - mea[ i ] ) / sds[ i ]
+  }
+  x_train <- cifar10$train$x
+  x_test <- cifar10$test$x
+
+  y_train <- cifar10$train$y[ , 1 ]
+  y_test <- cifar10$test$y[ , 1 ]
+
+  rm( cifar10 )
+  gc( reset = FALSE, full = TRUE, verbose = FALSE )
+
+  class_names <-
+    bind_cols(
+      class_id = 0:9
+      , class = c( 'airplane',
+                   'automobile',
+                   'bird',
+                   'cat',
+                   'deer', 
+                   'dog',
+                   'frog',
+                   'horse',
+                   'ship',
+                   'truck' ) )
+}
+##############################
+##  SOURCE DATA FORMAT END  ##
+##############################
+
+
+
+
+## ############################################
+##     'cifar10_tensor_to_image' function    ##
+###############################################
+# inputs :                                    #
+#    - "x" - the source tensor in the form of #
+#      a 3D array :                           #
+#        - 'image width' x                    #
+#        - 'image height' x                   #
+#        - 'depth (nb of color layers)'       #
+###############################################
+# returns an image in the form of 3D array    #
+###############################################
+cifar10_tensor_to_image <- function(
+  tensor_
+){
+  # De-normalize pixels
+  tensor_[ , , 1 ] <-
+    tensor_[ , , 1 ] * sds[ 1 ] + mea[ 1 ]
+  tensor_[ , , 2 ] <-
+    tensor_[ , , 2 ] * sds[ 2 ] + mea[ 2 ]
+  tensor_[ , , 3 ] <-
+    tensor_[ , , 3 ] * sds[ 3 ] + mea[ 3 ]
+
+  # scale to [0-1] interval
+  tensor_[] <- as.integer( tensor_ ) / 255
+  tensor_
+}
+###############################################
+# plot( as.raster( cifar10_tensor_to_image(
+#   x_train[ 50000, , , ] ) ) )
+
+
+
+
+## ############################################
+##        'get_cifar10_image' function       ##
+###############################################
+# inputs :                                    #
+#    - "images" - the source data in the form #
+#      of a 4D array :                        #
+#        - 'nb of records' x                  #
+#        - 'image width' x                    #
+#        - 'image height' x                   #
+#        - 'depth (nb of color layers)'       #
+#    - "img_idx" the index of the image       #
+#      to be considered                       #
+###############################################
+# returns a raster object (bitmap image)      #
+###############################################
+get_cifar10_image <- function(
+  images
+  , img_idx
+){
+  return(
+    cifar10_tensor_to_image(
+      images[ img_idx, , , ] ) )
+}
+###############################################
+
+
+
+
+## #################################################
+##          'plot_cifar10_image' function         ##
+####################################################
+# inputs :                                         #
+#    - "images" - the source data in the form of   #
+#      a 4D array :                                #
+#        - 'nb of records' x                       #
+#        - 'image width' x                         #
+#        - 'image height' x                        #
+#        - 'depth (nb of color layers)'            #
+#    - "labels" a vector of length 'nb of records' #
+#      integer values representing the 'classe id' #
+#      in the [0_9] range                          #
+#    - "img_idx" the index of the image            #
+#      to be considered                            #
+#    - "interpolate" A logical value indicating    #
+#      whether to linearly interpolate the image   #
+#      (the alternative is to use                  #
+#      nearest-neighbour interpolation, which      #
+#      gives a more blocky result).                #
+#      Optional, defaults to TRUE                  #
+####################################################
+# returns a "ggplot2" plot object                  #
+# representing a plotted (labelled) image          #
+####################################################
+plot_cifar10_image <- function(
+  images
+  , labels
+  , img_idx
+  , predictions = NULL
+  , interpolate = TRUE
+){
+  # Inserting a raster image to ggplot2
+  # @see 'https://stackoverflow.com/questions/9917049/inserting-an-image-to-ggplot2'
+  img <-
+    qplot() +
+    annotation_custom(
+      grid::rasterGrob( get_cifar10_image( images, img_idx )
+                  , interpolate = interpolate )
+      , xmin = -Inf, xmax = Inf
+      , ymin = -Inf, ymax = Inf )
+  if( is.null( predictions ) ) {
+    img +
+      xlab( class_names[
+        labels[ img_idx ] + 1, ]$class ) ->
+      img
+  } else {
+    if(
+      labels[ img_idx ] ==
+      which.max( predictions[ img_idx, ] ) - 1
+    ) {
+      # case 'predicted class' is 'true class' :
+      img +
+        xlab( paste(
+          class_names[
+            labels[ img_idx ] + 1, ]$class
+          , scales::percent(
+            predictions[
+              img_idx
+              , labels[ img_idx ] + 1 ]
+            , accuracy = 1 )
+          ) ) ->
+        img
+    } else {
+      # case 'else' :
+      img +
+        xlab( paste(
+          class_names[
+            labels[ img_idx ] + 1, ]$class
+          , scales::percent(
+            predictions[ img_idx
+                                 , labels[ img_idx ] + 1 ]
+            , accuracy = 1
+          )
+          , " ; "
+          , class_names[
+            which.max( predictions[ img_idx, ] ), ]$class
+          , scales::percent(
+            predictions[
+              img_idx
+              , which.max( predictions[ img_idx, ] ) ]
+            , accuracy = 1 )
+          ) ) ->
+        img
+    }
+  }
+  return( img )
+}
+####################################################
+# plot_cifar10_image( x_train, y_train, 6 )
+# plot_cifar10_image( x_test, y_test, 9, cifar10_predictions )
+
+
+
+
+## #############################################
+# LOAD TRAINED MODEL & PREDICTIONS INTO MEMORY #
+################################################
+{
+  localPath <- "./models/"
+  dir.create( localPath, showWarnings = FALSE )
+  amc_github_repo_url <-
+    "https://raw.githubusercontent.com/aurelienmorgan/edx-keras-cnn/master/"
+  dummy <-
+    lapply( c( "cifar10_history"
+               , "cifar10_model.h5"
+               , "cifar10_predictions" )
+            , FUN = function( x ) {
+              if( !file.exists( paste0( localPath, x ) ) ) {
+                download.file( url = paste0( amc_github_repo_url, x )
+                               , destfile = paste0( localPath, x )
+                               , mode = "wb" )
+              }
+            } )
+  rm( localPath, amc_github_repo_url, dummy )
+
+  # ensure there's a 'cifar10_model' object for the running session :
+  if( !exists( "cifar10_model" ) ) {
+    if( require( keras ) ) {
+      # keras-serialized model (incl. optimized parameters values)
+      cifar10_model <-
+        load_model_hdf5( "./models/cifar10_model.h5" )
+    } else {
+      cifar10_model <- NULL
+    }
+  }
+  if( !exists( "cifar10_history" ) ) {
+    cifar10_history <- readRDS( "./models/cifar10_history" )
+  }
+  if( !exists( "cifar10_predictions" ) ) {
+    cifar10_predictions <- readRDS( "./models/cifar10_predictions" )
+  }
+
+}
+################################################
+```
+
+The code used to create/train/evaluate the algorithm that illustrates this section of the herein report has been inspired by the vignette that comes with the **R/densenet** package (https://github.com/dfalbel/densenet) where is shown how to define a **DenseNet-40-12** model to classify images for the cifar10 dataset. Densenet had originally been introduced by this paper&nbsp;: _**Densely Connected Convolutional Networks**_[@densenetPaper].
+
+The architecture of the model we employed here is outlined figure \ref{fig:fig_densenet_archi} and further detailled [Appendix A](#appAanchor).
+
+```{r echo = FALSE }
+dir.create( "./images", showWarnings = FALSE )
+if( !file.exists( "./images/densenet_archi.jpg" ) ) try( download.file( url = "https://cloud.githubusercontent.com/assets/8370623/17981496/fa648b32-6ad1-11e6-9625-02fdd72fdcd3.jpg", destfile = "./images/densenet_archi.jpg", mode = 'wb' ) )
+```
+
+```{r echo = FALSE, fig.align="center", fig.height = .5, fig.cap="\\label{fig:fig_densenet_archi}Architecture of a DenseNet model" }
+knitr::include_graphics( "./images/densenet_archi.jpg", dpi = 900 )
+```
+
+```{r echo = FALSE }
+cifar10_prediction_classes <-
+  bind_cols(
+    class = apply( cifar10_predictions, 1, which.max ) - 1
+    , prob = apply( cifar10_predictions, 1, max )
+    , true_class = y_test
+  )
+
+cifar10_confusion_matrix <-
+  confusionMatrix(
+    data = factor( cifar10_prediction_classes$class
+                   , levels = 0:9 )
+    , reference = factor( cifar10_prediction_classes$true_class
+                          , levels = 0:9 ) )
+
+overallAccuracy <-
+  paste0(
+    scales::percent( cifar10_confusion_matrix$overall[ "Accuracy" ] )
+    , " ±"
+    , scales::percent(
+      cifar10_confusion_matrix$overall[ "Accuracy" ] -
+        cifar10_confusion_matrix$overall[ "AccuracyLower" ]
+      ,  accuracy = .1
+  ) )
+```
+
+The model takes ~185s per epoch on a high-end GPU (Nvidia GeForce GTX 1060)[^id_726]^,^[^id_721]. It is therefore highly advised to work over a GPU (as opposed to a _-much slower-_ CPU alone). We obtained a final accuracy on the test set of `r overallAccuracy` versus 93% reported on the paper[^id_722].
+
+<!--
+amc_pdf_print()
+-->
+
+## Discovering the cifar-10 dataset
+
+The cifar-10 dataset is a labeled subset of the **80 million tiny images** dataset, a _Visual Dictionary_ created to _"teach computers to recognize objects"_ which had been put together in 2008[@eightyMillionImages].  
+The cifar-10 dataset is made up of 60,000 color images in total[@cifar10]. 32x32 pixels in size each, they are distributed equally across 10 classes (see figure \ref{fig:fig_10classes}). There are 50,000 training images and 10,000 test images.
+
+
+```{r echo = FALSE, fig.cap="\\label{fig:fig_10classes}example image for the cifar-10 classes", fig.height = 3 }
+# plot a grid of first image of each class :
+first_indices <-
+  match( unique( y_test ), y_test )
+img_list <-
+  lapply( seq_along( first_indices )
+          , FUN = function( idx ) {
+            plot_cifar10_image( x_test
+                                , y_test
+                                , first_indices[ idx ] ) } )
+do.call("grid.arrange", c( img_list, nrow = 2 ) )
+rm( img_list )
+#
+```
+
+We realize by looking at the sample images figure \ref{fig:fig_10classes} that the 32x32 pixels resolution equates to pretty blurry pictures. It does make the performance of our classification model even more impressive, does it not ?
+
+
+\clearpage
+
+
+## The model training process
+
+In order to train a Deep Learning model, data is piped into that model. An **optimizer** is used to minimize the **loss function** by updating the **weights** (and **biases**) following their gradients.
+
+```{r echo = FALSE }
+# substitute to the keras 'plot.keras_training_history'
+# function
+# to allow for people not having the kears package installed
+# to still be able to view that plot
+#
+# cifar10_history_plot <-
+#   suppressWarnings(
+#     plot( cifar10_history
+#           , method = "ggplot2"
+#           , theme_bw = FALSE
+#           , smooth = FALSE ) +
+#       theme_light( base_size = 26
+#                    , base_family = "Helvetica" ) +
+#       theme(legend.position="bottom") +
+#       scale_color_discrete( name = NULL ) +
+#       scale_fill_discrete( name = NULL ) +
+#       ylab( NULL ) )
+#
+# using 'facet_wrap', all y axises have the same scale,
+# which is not what we want.
+tidy_df <-
+  cifar10_history$metrics %>% as_tibble %>%
+  mutate( epochs =
+            1:cifar10_history$params$epochs ) %>%
+  gather( key = "measure", factor_key = TRUE
+          , value = "value", -epochs ) %>%
+  mutate( color_group = ifelse(
+    measure %like% "val_", "validation", "training" ) )
+```
+
+\noindent
+\Begin{minipage}{0.4\linewidth}
+
+```{r echo = FALSE, fig.height = 5 }
+tidy_df %>% filter( measure %like% "loss" ) %>%
+  ggplot( aes( x = epochs, y = value, color = color_group ) ) +
+  geom_point() + ylab( "loss" ) +
+  scale_color_discrete( name = NULL ) +
+  theme_amc( base_size = 18 ) +
+  theme( legend.position = "top"
+         , legend.text = element_text( size = 18 ) ) +
+  # top, right, bottom, left
+  theme( plot.margin = unit( c( 0, .2, 0, 1.2 ), "cm" ) )
+```
+
+```{r echo = FALSE, fig.height = 4 }
+tidy_df %>% filter( measure %like% "acc" ) %>%
+  ggplot( aes( x = epochs, y = value, color = color_group ) ) +
+  geom_point( show.legend = FALSE ) +
+  ylab( "accuracy" ) +
+  theme_amc( base_size_ = 18 ) +
+  # top, right, bottom, left
+  theme( plot.margin = unit( c( 0, .2, 0, .8 ), "cm" ) )
+```
+
+```{r echo = FALSE, fig.height = 2, fig.cap="\\label{fig:fig_history}Training history" }
+tidy_df %>% filter( !measure %like% "acc" &
+                      !measure %like% "loss" ) %>%
+  ggplot( aes( x = epochs, y = value, color = color_group ) ) +
+  geom_point( show.legend = FALSE ) +
+  ylab( "learning rate" ) +
+  theme_amc( base_size_ = 18 )
+```
+
+<!--
+amc_pdf_print()
+-->
+
+```{r echo = FALSE }
+rm( tidy_df )
+```
+
+\End{minipage}
+\Begin{minipage}{0.6\linewidth}
+The _weights_ (and _biases_) of the neural network are its internal learnable parameters which are used in computing the output values and are learned and updated in the direction of the optimal solution[@optimizationAlgo].
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+An **epoch** is an arbitrary cutoff, generally defined as "one pass over the entire dataset", used to separate _training_ into distinct phases. This is useful for logging and periodic evaluation. When training a _keras_ model, evaluation is run at the end of every epoch\footnotemark.  
+Within Keras, there is the ability to add **callbacks**[@callbackFunction] specifically designed to be run at the end of an epoch. Examples of these are learning rate changes and model checkpointing (saving).
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+
+```{r echo = FALSE }
+avgAcc <-
+  scales::percent(
+    mean( cifar10_history$metrics$val_acc[
+      227:length( cifar10_history$metrics$val_acc ) ] )
+    ,  accuracy = .1 )
+lr_1 <- cifar10_history$metrics$lr[ 1 ]
+lr_2 <- cifar10_history$metrics$lr[ 156 ]
+lr_3 <- cifar10_history$metrics$lr[ 227 ]
+```
+
+
+The **learning rate (lr)** (third quadrant, Figure \ref{fig:fig_history}) is an input parameter that establishes how big jumps are to be in the optimization gradient descent between each epoch of the training process.  
+Along the first 150 epochs, despite managing efficiently to minimize the **loss** (first quadrant) on the training data, it is hardly allowing to converge at all in terms of predicting power ( "validation" **accuracy** rather fuzy as can be seen on the second quadrant to say the least). This first phase of training with lr = `r lr_1` is therefore not sufficient to allow for a useful set of hyperparameters to be found. We must go beyond the first 150 epochs and apply a smaller _learning rate_ lr = `r lr_2`. We can see here that we had to perform such a decrease of _learning rate_ twice in order to get to a stable _accuracy_ on the validation set with a final lr = `r lr_3`.
+
+\End{minipage}
+\footnotetext{Per default, the data is randomly shuffled at each epoch during training.
+The same validation set is used for all epochs (within a same call to 'fit'). We provide that 'validation set' to the fitting/training routine. Validation data is never shuffled.}
+
+In our case, we can observe that at the third step of this progressive process, our _overall accuracy_ is stable around an average value of `r avgAcc`, slightly increasing until reaching a final plateau.
+
+```{r echo = FALSE }
+rm( avgAcc, lr_1, lr_2, lr_3 )
+```
+<!--
+amc_pdf_print()
+-->
+
+
+
+
+
+
+[^id_726]: All product and company names are trademarks^TM^ or registered^®^ trademarks of their respective holders.
+[^id_721]: The model is reported by the author of the "densenet for R" packag to take ~125s per epoch on an Nvidia GeForce 1080 Ti.
+[^id_722]: an overall accuracy on test set of 0.9351 was reprted by the author of the "densenet for R" package (meaning that 93.51% of the test images have been classified properly).
+
+
+<!--
+\clearpage
+-->
+
+<!--
+amc_pdf_print()
+-->
+
+## Results
+
+As seen earlier, the overall performance of our model  can be summarized by its overall accuracy of `r overallAccuracy`. Like any model though, it does not perform homogeneously accros classes. Table \ref{tab:tab_metrics} below shows for each of its classes, besides from their respective prevalence[^id_399], a select set of commonly used performance metrics&nbsp;:
+
+```{r echo = FALSE }
+confusion_byClass_df <-
+  cifar10_confusion_matrix$byClass[
+    , c( "Prevalence", "Specificity", "Sensitivity"
+         , "Pos Pred Value", "Balanced Accuracy", "F1" ) ] %>%
+  as_tibble %>% round( 3 ) %>%
+  rename( Precision = "Pos Pred Value" ) %>%
+  add_column( class_id = 0:9, .before = "Prevalence" ) %>%
+  inner_join( class_names, by = "class_id" ) %>%
+  select( "class", everything(), -c( "class_id" ) )
+least_well_classified_class <-
+  confusion_byClass_df$class[ which.min( confusion_byClass_df$Sensitivity ) ]
+mostly_misclassif_as_id <-
+  cifar10_confusion_matrix$table %>% as_tibble %>%
+  filter( Reference ==
+            which.min(
+              confusion_byClass_df$Sensitivity
+            ) - 1 &
+            Prediction != which.min(
+              confusion_byClass_df$Sensitivity
+            ) - 1 ) %>%
+  select( -c( "Reference" ) ) %>% .$n %>% which.max
+
+# items from the class with the lowest specificity "X"
+# which are misclassfied as the class for which
+# that "X" class is the most often confused
+most_improperly_classified_idx <-
+
+  ( which(
+    y_test ==
+      # class_id of class "X"
+      which.min(
+         confusion_byClass_df$Sensitivity
+      ) - 1 ) )[
+      
+        which(
+        
+          cifar10_prediction_classes$class[
+          
+            # all items of class "X"
+            which(
+              y_test ==
+                # class_id of class "X"
+                which.min(
+                   confusion_byClass_df$Sensitivity
+                ) - 1
+            )
+          
+            ] ==
+          
+            # class_id for the class which is most often wrongly
+            # attributed items from class "X"
+            mostly_misclassif_as_id
+        
+        )
+      
+        ]
+
+class_random_indices <-
+  sample( most_improperly_classified_idx
+    , min( 50, length( most_improperly_classified_idx ) )
+    , replace = FALSE )
+most_improperly_classified_img_list <-
+  lapply( seq_along( class_random_indices )
+          , FUN = function( idx ) {
+            plot_cifar10_image( x_test
+                                , y_test
+                                , class_random_indices[ idx ]
+                                , cifar10_predictions ) +
+              theme_amc( base_size_ = 50 ) } )
+most_improperly_classified_caption <-
+  paste0(
+    length( most_improperly_classified_img_list )
+    , " cases of \"a "
+    , least_well_classified_class
+    , " for a "
+    , class_names %>% filter( class_id == mostly_misclassif_as_id ) %>% .$class
+    , "\" mis-classification" )
+rm( most_improperly_classified_idx, class_random_indices )
+```
+
+<!--
+amc_pdf_print()
+-->
+
+* A class **specificity**, also called **\underline{\makebox[0.1in][l]{T}}rue \underline{\makebox[0.11in][l]{N}}egative \underline{\makebox[0.11in][l]{R}}ate (TNR)**, is the proportion of items of OTHER classes that are appropriately NOT classified as belonging to that class. E.g. `r scales::percent( confusion_byClass_df$Specificity[ 1 ] )` of items that are NOT `r paste0( confusion_byClass_df$class[ 1 ], "s" )` are adequately classfied as NOT being `r paste0( confusion_byClass_df$class[ 1 ], "s" )` by our model.
+
+* A class **sensitivity**, also called **recall**, also called **\underline{\makebox[0.1in][l]{T}}rue \underline{\makebox[0.1in][l]{P}}ositive \underline{\makebox[0.11in][l]{R}}ate (TPR)**, is the proportion of items of that class that are appropriately classified as belonging to that class. E.g. `r scales::percent( confusion_byClass_df$Sensitivity[ 1 ] )` of `r paste0( confusion_byClass_df$class[ 1 ], "s" )` are adequately classfied as being `r paste0( confusion_byClass_df$class[ 1 ], "s" )` by our model.
+
+\small
+_Specificity_ and _sensitivity_, between the two of them, reflect very well the performance of a model at the 'class' level.
+\normalsize
+
+* A class **precision**, also called **\underline{\makebox[0.1in][l]{P}}ositive \underline{\makebox[0.1in][l]{P}}redictive \underline{\makebox[0.1in][l]{V}}alue (PPV)**, doesn't bring additionnal information compared to the first two performance metrics. It is another way to present it. It in fact corresponds to the proportion of items classified as belonging to that class that are truly elements of that class. E.g. `r scales::percent( confusion_byClass_df$Precision[ 1 ] )` of items classfied as being `r paste0( confusion_byClass_df$class[ 1 ], "s" )` are indeed `r paste0( confusion_byClass_df$class[ 1 ], "s" )`  
+
+\small
+Alternatively to _Specificity_ and _sensitivity_, _Precision_ and _recall_, are also often refered to together in statistics and machine learning literrature.  
+_Class recall_ can be thought of as a measure of how often a model is able to find elements of that given class when looking for one.  
+_Class precision_ can be thought of as a measure of how "believable" a model is when it says an item is of that particular class.
+\normalsize
+
+* A class **Balanced accuracy** is somehow redundant with the preceding metrics in the sense that it doesn't bring additionnal information. It is often used to summarize _specificity_ and _sensitivity_ as it is in fact their _harmonic mean_[^id_137].
+
+* Comparatively, a class **F1 score** is the _harmonic mean_ between _precision_ and _recall_.
+
+```{r echo = FALSE }
+# Specificity(TNR) ; Sensitivity(TPR)
+knitr::kable(
+  confusion_byClass_df %>% rename(
+    "\\multirow{2}{*}[0pt]{class}" = "class"
+    , "\\multirow{2}{*}[0pt]{Prevalence}" = "Prevalence"
+    , "\\multirow{2}{*}[0pt]{Specificity}" = "Specificity"
+    , "Sensitivity (Recall)" = "Sensitivity"
+    , "\\multirow{2}{*}[0pt]{Precision}" = "Precision"
+    , "\\multirow{2}{*}[0pt]{F1}" = "F1"
+  )
+  , format = "latex", booktabs = TRUE
+  , escape = FALSE
+  , caption = "\\label{tab:tab_metrics}Performance metrics of the Densenet classification"
+  , row.names = FALSE
+  , linesep = ""
+  , longtable = FALSE # no split accross pages
+  , align = paste0( rep( "c", 5 )
+                    , collapse = "" )
+) %>%
+  kableExtra::kable_styling(
+    font_size = 8, latex_options = c( "hold_position" )
+  ) %>%
+  kableExtra::column_spec( column = 3
+                           , background = "amccolor"
+                           , bold = TRUE ) %>%
+  kableExtra::column_spec( 4, width = ".6in"
+                           , background = "amccolor"
+                           , bold = TRUE ) %>%
+  kableExtra::column_spec( 6, width = ".6in"
+                           , background = "amccolor"
+                           , bold = TRUE )
+```
+
+<!--
+amc_pdf_print()
+-->
+
+As we can see table \ref{tab:tab_metrics}, the performance of our object classification model is excellent but, for the sake of argument, let us remark that `r ifelse( mean( confusion_byClass_df$Specificity ) > mean( confusion_byClass_df$Sensitivity ), "_sensitivity_ is on average lower than _specificity_", "_specificity_ is on average lower than _sensitivity_" )` with our trained model. Since it is the class with lesser _specificity_ with a value of `r scales::percent( min( confusion_byClass_df$Sensitivity ), accuracy = .1 )`, lets look into images of class `r paste0( "\"", least_well_classified_class, "\"" )` and see how our model has classified the `r paste0( least_well_classified_class, "s" )` images of the validation set&nbsp;:
+
+```{r echo = FALSE }
+cifar10_confusion_matrix$table %>% as_tibble %>%
+  filter( Reference ==
+            which.min(
+              confusion_byClass_df$Sensitivity
+            ) - 1 ) %>%
+  add_column( class_id = 0:9 ) %>%
+  select( -c( "Reference", "Prediction" ) ) %>%
+  inner_join( class_names, by = "class_id" ) %>%
+  select( "class", everything(), -c( "class_id" ) ) %>% t %>%
+  knitr::kable(
+    format = "latex", booktabs = TRUE
+    , longtable = FALSE # no split accross pages
+    , row.names = FALSE
+    , caption = paste0(
+      "\\label{tab:tab_misclassif}Distribution of the predictions for "
+      , least_well_classified_class
+      , " images by our model" )
+    , align = paste0( rep( "c", 10 )
+                      , collapse = "" )
+  ) %>%
+    kableExtra::kable_styling(
+      font_size = 8, latex_options = c( "hold_position" )
+    )
+```
+
+Table \ref{tab:tab_misclassif} shows how the `r format( cifar10_confusion_matrix$table %>% as_tibble %>% filter( Reference == which.min( confusion_byClass_df$Sensitivity ) - 1 ) %>% summarize( count_ = sum( n ) ) %>% .$count_, nsmall = 0, big.mark = "," ) ` `r least_well_classified_class ` images of the validation dataset have been classified by our model. We see there that, when misclassified, they are mostly identified as `r class_names %>% filter( class_id == mostly_misclassif_as_id ) %>% .$class ` images (`r cifar10_confusion_matrix$table %>% as_tibble %>% filter( Reference == which.min( confusion_byClass_df$Sensitivity ) - 1 & as.integer( Prediction ) == mostly_misclassif_as_id ) %>% .$n ` times).
+
+```{r echo = FALSE, results = 'asis' }
+if( least_well_classified_class == "cat" &
+    class_names %>% filter( class_id == mostly_misclassif_as_id ) %>% .$class == "dog"
+) {
+  cat( "This might be explainable by the fact that there are many different races of dogs, all having very different characteristics (length of legs, shape of face, etc.) and many different races of cats (with varying ear shapes and various hair thickness). It might be why the model sometimes misclassifies some cats for dogs.")
+}
+```
+
+[Appendix B](#appBanchor) shows `r length( most_improperly_classified_img_list ) ` of such "a `r least_well_classified_class ` for a `r class_names %>% filter( class_id == mostly_misclassif_as_id ) %>% .$class `" misclassified images, for information.
+
+```{r echo = FALSE }
+rm( cifar10_prediction_classes, cifar10_confusion_matrix
+    , confusion_byClass_df, least_well_classified_class
+    , mostly_misclassif_as_id )
+```
+
+[^id_399]: Prevalence is a statistical concept. In our specific case here, it is used to express the proportion of our entire population of images that belong to each individual class. The sum of all prevalences accross all classes always accounts to 1 (100% of the population).
+[^id_137]: the average of rates.
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+---
+
+<!--
+amc_pdf_print()
+-->
+
+\clearpage
+
+# Style transfer{#styleTransferAnchor}
+
+
+```{r vgg16_r_objects, echo = FALSE }
+
+## ####################################
+# LOAD TRAINED MODEL INFO INTO MEMORY #
+#######################################
+{
+  localPath <- "./models/"
+  dir.create( localPath, showWarnings = FALSE )
+  amc_github_repo_url <-
+    "https://raw.githubusercontent.com/aurelienmorgan/edx-cifar10/master/"
+  dummy <-
+    lapply( c( "vgg16_model_summary.txt" )
+            , FUN = function( x ) {
+              if( !file.exists( paste0( localPath, x ) ) ) {
+                download.file( url = paste0( amc_github_repo_url, x )
+                               , destfile = paste0( localPath, x )
+                               , mode = "wb" )
+              }
+            } )
+  rm( localPath, amc_github_repo_url, dummy )
+}
+#######################################
+```
+
+The will to investigate this part of the Machine Learning applications to Image Processing for the herein report has originally been triggered by coming accros this post by Chintan TRIVEDI on **towardsdatascience.com**&nbsp;: "Turning Fortnite into PUBG with Deep Learning (CycleGAN)"[@fortnitePubg].  
+The author there uses hypophora, a figure of speech in which a writer raises a question and then immediately provides an answer to that question. He went on with the following&nbsp;:
+
+> Can we have graphics mods for games that can allow us to choose the visual effects of our liking without having to rely on the game developers providing us that option?
+
+The answer he provided to that was to pick two insanely popular Battle Royale games out, Fortnite and PUBG. He made a Neural Network’s attempt at recreating Fortnite in the visual style of PUBG. And he did great&nbsp;!  
+We will however take a much less ambitious go to _style transfer_. But it's not gonna be less fun of a read&nbsp;!
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+## Model inner workings
+
+The starting codebase used for this Style Transfer project has been extracted from the "rstudio/keras" GitHub[@styleTranferGithub]. Contrarily to what we've done in the previous section, we here use a **pre-trained** VGG16 model which, among others, comes with the keras distribution [@preTrainedKerasModels]. Examples of _style transfer_ performed using that method can be found on the Internet&nbsp;: [@styleTranferExamples1][@styleTranferExamples2].
+
+```{r echo = FALSE}
+if( !file.exists( "./images/vgg16_archi.png" ) ) try( download.file(url = "https://cdn-images-1.medium.com/max/1200/1*-lIw_z6HEPHaGSpSOhyBow.png", destfile = "images/vgg16_archi.png", mode = "wb" ) )
+# ref: 'http://www.cs.toronto.edu/~frossard/post/vgg16/'
+```
+
+\Begin{wrapfigure}{l}{0.55\textwidth}
+```{r echo = FALSE, fig.show = "asis", fig.keep = "high" }
+knitr::include_graphics( "./images/vgg16_archi.png", dpi = 300 )
+```
+\caption{\label{fig:fig_vgg16_archi}Architecture of a VGG16 model}
+\End{wrapfigure}
+
+VGG is a convolutional neural network model for image recognition proposed by the Visual Geometry Group in the University of Oxford[@vggOxford]. It has originally been introduced with this paper&nbsp;: "Very Deep Convolutional Networks for Large-Scale Image Recognition"[@veryDeepCnnOxford][@veryDeepCnnPaper]. VGG16 refers to a VGG model with 16 weight layers[^id_889]. It's a convolutional neural network that is trained on more than a million images from the 'ImageNet' database[@imagenetDb], which contains color images for 1,000 classes.
+
+Figure \ref{fig:fig_vgg16_archi} illustrates the architecture of VGG16: the input layer takes an image in the size of (224 x 224 x 3), and the output layer is a softmax prediction (on 1,000 classes). From the input layer to the last max pooling layer (labeled by 7 x 7 x 512) is regarded as the **feature extraction** part of the model, while the rest of the network is regarded as the **classification** part of the model. We here take advantage of the former and disregard the latter.  Further details on the VGG16 architecture can be found [Appendix C](#appCanchor).
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+---
+
+
+[^id_889]: In 2014, 16 and 19 layer networks were considered very deep (although in 2019 we have the ResNet architecture which can be successfully trained at depths of 50-200 for ImageNet and over 1,000 for CIFAR-10).
+
+\clearpage
+
+<!--
+amc_pdf_print()
+-->
+
+Within an image, we can distinguish layers that are responsible for the style (basic shapes, colors etc.) and the ones responsible for the content (image-specific features such as outlines and positions), we can separate the CNN layers to independently work on the content and style.
+
+We set our task as an optimization problem where we are going to minimize:
+
+* **content loss** (distance between the input and output images - we strive to preserve the content)
+* **style loss** (distance between the style and output images - we strive to apply a new style)
+* **total variation loss** (spatial smoothness to denoise the output image)
+
+Finally, we set our gradients and minimize our global loss (which is a combination of content, style and total variation losses) with the L-BFGS-B[@LBFGSBalgo] algorithm[^id_670].
+
+
+## Application
+
+Back in 2016-2017, in the frame of the **ESSEC&Mannheim EMBA** I pursued[@emba], we had several exciting opportunities to widen our horizons.
+We for instance followed the **Leadership Training program at Saint-Cyr Coëtquidan**[@leadershipPrgm]. We also had several business residencies worldwide. We went to **UCLA** (California, U.S.), to the **Indian Institute of Management Ahmedabad** (Gujarat, India), to the **ESSEC Asia-Pacific** campus (Singapore), as well as to **Mannheim Business School** (Germany). During these residencies, we visited several very exciting companies such as **SpaceX**[@spacex] and **Grab**[@grab]. Those are all great memories.
+
+To illsutrate the capabilities of our _style transfer_ model, we use a picture of me taken in the luxurious alleys of the IIM Ahmedabad campus as the "original content" picture.  
+We'll go over two distinct examples and apply two very different styles to that picture. We'll generate each time a brand new image, with the content from the 'original content' picture and the style from the 'new style' picture[^id_452]. Those two examples consist in applying a _beach_ style on one hand and a _snowy wood_ style on the other.  
+As can be seen on the respective figures \ref{fig:fig_beach_style} &  \ref{fig:fig_snowy_wood_style}, the smallest details from the "original content" are not all grasped by the algorithm but the main components (character in a particular position with landscape characteristics such as the presence of a building at the right in the background) are captured efficiently in the generated new image.
+
+The results are estonishing.
+
+It takes no longer than a couple minutes in processing time for the _style tranfer_ algorithm each time to iteratively come up with the results.
+
+
+
+[^id_670]: the original math behind it all was originally uncovered in the Cornwell University paper by Leon A. Gatys, Alexander S. Ecker, Matthias Bethge[@artisticStyleNeuralAlgo].
+[^id_452]: both of the employed 'new style' pictures have been taken from the bank of copyright free images **pixabay.com**[@beachStyleImage][@snowyWoodStyleImage].
+
+
+\clearpage
+
+<!--
+amc_pdf_print()
+-->
+
+
+```{r echo = FALSE }
+dir.create( "./images/style_transfer", recursive = TRUE, showWarnings = FALSE )
+
+if( !file.exists( "./images/style_transfer/beach.png" ) ) try( download.file( url = paste0( amc_github_repo_url, "/images/style_transfer/beach.png" ), destfile = "./images/style_transfer/beach.png", mode = 'wb' ) )
+if( !file.exists( "./images/style_transfer/snowy_wood.png" ) ) try( download.file( url = paste0( amc_github_repo_url, "/images/style_transfer/snowy_wood.png" ), destfile = "./images/style_transfer/snowy_wood.png", mode = 'wb' ) )
+if( !file.exists( "./images/style_transfer/neural-style-base-img.jpg" ) ) try( download.file( url = paste0( amc_github_repo_url, "/images/style_transfer/neural-style-base-img.jpg" ), destfile = "./images/style_transfer/neural-style-base-img.jpg", mode = 'wb' ) )
+
+if( !file.exists( "./images/style_transfer/neural-style-beach-style.jpg" ) ) try( download.file( url = "https://cdn.pixabay.com/photo/2014/04/26/04/25/fitness-332278_960_720.jpg", destfile = "./images/style_transfer/neural-style-beach-style.jpg", mode = 'wb' ) )
+if( !file.exists( "./images/style_transfer/neural-style-snowy_wood-style.jpg" ) ) try( download.file( url = "https://cdn.pixabay.com/photo/2017/08/06/15/20/people-2593421_960_720.jpg", destfile = "./images/style_transfer/neural-style-snowy_wood-style.jpg", mode = 'wb' ) )
+```
+
+
+\Begin{landscape}
+
+\newgeometry{left=1.5cm,right=0cm,top=5.5cm,bottom=0.1cm}
+
+\Begin{figure}
+\Begin{center}
+\renewcommand{\arraystretch}{2}
+```{r beach, echo = FALSE }
+table <- dplyr::tibble(
+  col2= c( "\\immediate \\includegraphics[valign = T, scale=0.6]{./images/style_transfer/neural-style-base-img.jpg}"
+             , "\\immediate \\includegraphics[valign = T, scale=0.6]{./images/style_transfer/beach.png}"
+             , "\\immediate \\includegraphics[valign = T, scale=0.4]{./images/style_transfer/neural-style-beach-style.jpg}" )
+  , col1 = c( "original content picture"
+            , "generated picture"
+            , "new style picture" ) )
+
+knitr::kable(
+  t( table )
+  , format = "latex"
+  , booktabs = TRUE
+  , escape = FALSE
+  , row.names = FALSE
+  , align = paste0( rep( "c", 3 )
+                    , collapse = "" )
+)
+```
+\renewcommand{\arraystretch}{1}
+
+\caption{\label{fig:fig_beach_style}Beach style transfer}
+
+\End{center}
+
+\End{figure}
+
+In this first example here figure \ref{fig:fig_beach_style}, tree leaves are shaded, as if to evoke a cloudless sky over a caribbean blue sea. It is also fascinating to notice that the low wall I'm leaning on in the "original content" picture became a yellow sandy beach in the "newly created" picture.
+
+\restoregeometry
+
+\clearpage
+
+\newgeometry{left=1.5cm,right=0cm,top=6cm,bottom=0.1cm}
+
+\Begin{figure}
+\Begin{center}
+\renewcommand{\arraystretch}{2}
+```{r snowy_wood, echo = FALSE }
+table <- dplyr::tibble(
+  col2= c( "\\immediate \\includegraphics[valign = T, scale=0.6]{./images/style_transfer/neural-style-base-img.jpg}"
+             , "\\immediate \\includegraphics[valign = T, scale=0.6]{./images/style_transfer/snowy_wood.png}"
+             , "\\immediate \\includegraphics[valign = T, scale=1.1]{./images/style_transfer/neural-style-snowy_wood-style.jpg}" )
+  , col1 = c( "original content picture"
+            , "generated picture"
+            , "new style picture" ) )
+
+knitr::kable(
+  t( table )
+  , format = "latex"
+  , booktabs = TRUE
+  , escape = FALSE
+  , row.names = FALSE
+  , align = paste0( rep( "c", 3 )
+                    , collapse = "" )
+)
+```
+\renewcommand{\arraystretch}{1}
+
+\caption{\label{fig:fig_snowy_wood_style}Snowy wood style transfer}
+
+\End{center}
+
+\End{figure}
+
+On this second _style transfer_ example here figure \ref{fig:fig_snowy_wood_style}, my skin is made much more pale ; as to be closer to the tan of the model from the "new style" picture. An other interesting remark we can make is that it seems that the algorithm has added a couple tree trunks in the image it generated.
+
+\restoregeometry
+
+\clearpage
+
+\End{landscape}
+
+\clearpage
+
+<!--
+amc_pdf_print()
+-->
+
+# Discussion
+
+
+The focus of the herein report has been very narrow. It consisted of only navigating around the topic of image processing with CNNs. For starters, we've seen that object classification could be achieved with a fairly high accuracy[^id_562], and then we've explored in a recreational way the strength of feature extraction with picture style tranfer. The idea was to give a glimpse of how broad the capabilities of Convolutional Neural Networks can be.
+
+Todays' entrepreneurs have a chance to see Deep Learning as a toolset that provides possibilities for endless new building block combinations. With the right association, it can be a valuable contributor to feature engineering and fit plethora of business scenarios. With a little bit of creativity and imagination, there's still so much room to further drive innovation.
+
+Deep Learning is a very dynamic field. Contrarily to other areas where research is concentrated in academic spheres, machine learning gained a lot of private traction in the recent years due to its many applications and promises. Deep learning and Convolutional Neural Networks are not exempt from that phenomenon. It is for instance hard to ignore the potential applications of CNN to the field of computer vision for self-driving cars development[@selfDrivingRobotCNN][@selfDrivingCarCNN]. And that's just on the algorithm front.
+
+Hardware manufacturers are competing fiercly, trying to elbow their way through providing the best AI chispset[@aiChipsetManufacturers]. But the future is knocking at our doors already with the advancements made in quantum computing.  
+The concept of indeterminacy (indefinite state) from Quatum physics offers a whole world of new possibilities when applied to machine learning ; going from Classical to Quantum predictions as summarized by the famous "quantum coin toss" problem[@quantumCoinToss] is a near-future game changer. This was brilliantly articulated in her recent TED Talk by Dr. Shohini GHOSE&nbsp;: "Quantum computing explained in 10 minutes"[@quantumComputTedX]. Quantum computers are there depicted as unbeatable champions with, in the end, what could be perceived as psychic-like superpowers.
+
+Ideas like that, I certainly find invigorating.
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+---
+
+
+[^id_562]: Image classification consists in identifying a main object inside a scene. A much harder thing to achieve is object detection (locate and identify objects in an image), as glanced over in that 2 parts "keras with R" tutorial&nbsp;: [@rstudioKerasNamingLocationObjects], [@rstudioKerasObjectDetectionConcept]
+
+
+\clearpage
+
+<!--
+amc_pdf_print()
+-->
+
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+\Vspace{3.5in}
+
+\Begin{center}
+
+# Appendices {.unnumbered}
+
+\End{center}
+
+\newpage
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+\Vspace{3.5in}
+
+\Begin{center}
+
+## Appendix A {#appAanchor .unnumbered}
+
+Architecture of the DenseNet-40-12 model employed for cifar-10 objects classification
+
+\End{center}
+
+\newpage
+
+```{r echo = FALSE, results = 'asis' }
+if( is.null( cifar10_model ) ) {
+  cat( "\\textcolor{red}{The 'keras' R package is required.}\n\n" )
+}
+```
+
+```{r echo = FALSE }
+if( !is.null( cifar10_model ) ) {
+  summary( cifar10_model )
+}
+```
+
+\newpage
+
+
+<!--
+amc_pdf_print()
+-->
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+\Vspace{3.5in}
+
+\Begin{center}
+
+## Appendix B {#appBanchor .unnumbered}
+
+Examples of faulty object classification by our Densenet deep learning model
+
+\End{center}
+
+\newpage
+
+```{r echo = FALSE, fig.height = 60, fig.width = 40 , fig.cap = paste0( "\\label{fig:fig_most_improperly_classified}", most_improperly_classified_caption ) }
+do.call( "grid.arrange"
+         , c( most_improperly_classified_img_list
+              , ncol = 5 ) )
+```
+
+```{r echo = FALSE }
+rm( most_improperly_classified_img_list
+    , most_improperly_classified_caption )
+```
+
+\newpage
+
+
+<!--
+amc_pdf_print()
+-->
+
+$~$<!-- blank line (equation with single equation white space) -->
+
+\Vspace{3.5in}
+
+\Begin{center}
+
+## Appendix C {#appCanchor .unnumbered}
+
+Architecture of the VGG-16 model employed for picture style transfer
+
+\End{center}
+
+\newpage
+
+```{r echo = FALSE, results = 'asis' }
+if( !require( keras ) ) {
+  cat( "\\textcolor{red}{The 'keras' R package is required.}\n\n" )
+}
+```
+
+```{r echo = FALSE }
+if( require( keras ) ) {
+  cat( readLines( "./models/vgg16_model_summary.txt" )
+       , sep = "\n" )
+}
+```
+
+\newpage
+
+
+
+# References {.unnumbered}
+
+
+<!--
+amc_pdf_print()
+-->
+
+
+<!-- can be placed anywhere, runs at complie time, prior to printing -->
+
+\begin{filecontents*}{Reportbib.bib}
+
+@misc{kerasBackend,
+Title = {{Keras backends}},
+howpublished = {\url{https://keras.io/backend/}}
+}
+
+@misc{localGpuTensorFlow,
+Title = {{Local GPU - TensorFlow for R}},
+howpublished = {\url{https://tensorflow.rstudio.com/tools/local_gpu.html}}
+}
+
+@misc{installRstudioKeras,
+Title = {{Install Keras and the TensorFlow backend - RStudio}},
+howpublished = {\url{https://keras.rstudio.com/reference/install_keras.html}}
+}
+
+@misc{rstudioKerasGettingStarted,
+Title = {{Getting Started with Keras - RStudio}},
+howpublished = {\url{https://keras.rstudio.com/articles/getting_started.html#tutorials}}
+}
+
+@misc{pguRpackage,
+Title = {{R – GPU Programming for All with 'gpuR'}},
+howpublished = {\url{https://www.r-bloggers.com/r-gpu-programming-for-all-with-gpur/]}},
+Year = {2016},
+Month = {March}
+}
+
+@misc{pguComputingR,
+Title = {{R tutorial - GPU Computing with R}},
+howpublished = {\url{http://www.r-tutor.com/gpu-computing}}
+}
+
+@misc{rstudioKerasLayers,
+Title = {{Keras available layers - RStudio}},
+howpublished = {\url{https://keras.rstudio.com/reference/#section-core-layers}}
+}
+
+@misc{dnnImage,
+Title = {{Deep Neural Network - image source}},
+howpublished = {\url{https://searchenterpriseai.techtarget.com/definition/neural-network}}
+}
+
+@misc{cnnWebTrafficForecasting,
+Title = {{CNN - Web-traffic-forecasting - GitHub}},
+howpublished = {\url{https://github.com/sjvasquez/web-traffic-forecasting}}
+}
+
+@misc{rstudioKerasRnnTemperature,
+Title = {{Time Series Forecasting with Recurrent Neural Networks - RStudio}},
+howpublished = {\url{https://blogs.rstudio.com/tensorflow/posts/2017-12-20-time-series-forecasting-with-recurrent-neural-networks/}}
+}
+
+@misc{cnnSentenceClassif,
+Title = {{Convolutional Neural Networks for Sentence Classification - New York University}},
+howpublished = {\url{https://arxiv.org/pdf/1408.5882.pdf]}},
+Year = {2014},
+Month = {September}
+}
+
+@misc{cnnSpeechRecognition,
+Title = {{Convolutional Neural Networks for Speech Recognition}},
+howpublished = {\url{https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/CNN_ASLPTrans2-14.pdf]}},
+Year = {2016},
+Month = {February}
+}
+
+@misc{rstudioKerasRnnSunspot,
+Title = {{Predicting Sunspot Frequency with Keras - RStudio}},
+howpublished = {\url{https://blogs.rstudio.com/tensorflow/posts/2018-06-25-sunspots-lstm/}}
+}
+
+@misc{tensorVsMatrix,
+Title = {{What’s the difference between a matrix and a tensor?}},
+howpublished = {\url{https://medium.com/@quantumsteinke/whats-the-difference-between-a-matrix-and-a-tensor-4505fbdc576c]}},
+Year = {2017},
+Month = {August}
+}
+
+@misc{tensorMlVsMath,
+Title = {{In what do machine learning "tensors" differ from tensors in mathematics?}},
+howpublished = {\url{https://stats.stackexchange.com/questions/198061/why-the-sudden-fascination-with-tensors#198395]}},
+Year = {2016},
+Month = {Sptember}
+}
+
+@misc{cnnUltimateGuide,
+Title = {{The Ultimate Guide to Convolutional Neural Networks (CNN)}},
+howpublished = {\url{https://www.superdatascience.com/blogs/the-ultimate-guide-to-convolutional-neural-networks-cnn]}},
+Year = {2018},
+Month = {August}
+}
+
+@misc{word2Vec,
+Title = {{Word2Vec - Vector Representations of Words - TensorFlow}},
+howpublished = {\url{https://www.tensorflow.org/tutorials/representation/word2vec}}
+}
+
+@misc{word2VecBeginner,
+Title = {{A Beginner's Guide to Word2Vec and Neural Word Embeddings}},
+howpublished = {\url{https://skymind.ai/wiki/word2vec}}
+}
+
+@misc{densenetPaper,
+Title = {{Densely Connected Convolutional Networks}},
+howpublished = {\url{https://arxiv.org/pdf/1608.06993.pdf}},
+Year = {2016},
+Month = {August}
+}
+
+@misc{eightyMillionImages,
+Title = {{80 million tiny images - a large dataset for non-parametric object and scene recognition}},
+howpublished = {\url{http://people.csail.mit.edu/torralba/publications/80millionImages.pdf}},
+Year = {2008}
+}
+
+@misc{cifar10,
+Title = {{The CIFAR-10 dataset}},
+howpublished = {\url{https://www.cs.toronto.edu/~kriz/cifar.html}}
+}
+
+@misc{optimizationAlgo,
+Title = {{Types of Optimization Algorithms used in Neural Networks and Ways to Optimize Gradient Descent}},
+howpublished = {\url{https://towardsdatascience.com/types-of-optimization-algorithms-used-in-neural-networks-and-ways-to-optimize-gradient-95ae5d39529f}},
+Year = {2017},
+Month = {June}
+}
+
+@misc{callbackFunction,
+Title = {{Callback function}},
+howpublished = {\url{https://developer.mozilla.org/en-US/docs/Glossary/Callback_function}}
+}
+
+@misc{fortnitePubg,
+Title = {{Turning Fortnite into PUBG with Deep Learning (CycleGAN)}},
+howpublished = {\url{https://towardsdatascience.com/turning-fortnite-into-pubg-with-deep-learning-cyclegan-2f9d339dcdb0}},
+Year = {2018},
+Month = {June}
+}
+
+@misc{styleTranferGithub,
+Title = {{rstudio/keras - neural\_style\_transfer - GitHub}},
+howpublished = {\url{https://github.com/rstudio/keras/blob/master/vignettes/examples/neural_style_transfer.R}}
+}
+
+@misc{preTrainedKerasModels,
+Title = {{rstudio/keras - Applications}},
+howpublished = {\url{https://keras.rstudio.com/reference/#section-applications}}
+}
+
+@misc{styleTranferExamples1,
+Title = {{Experiments with style transfer}},
+howpublished = {\url{http://genekogan.com/works/style-transfer/}},
+Year = {2015}
+}
+
+@misc{styleTranferExamples2,
+Title = {{Style transfer - flickr}},
+howpublished = {\url{https://www.flickr.com/photos/genekogan/sets/72157658785675071}}
+}
+
+@misc{vggOxford,
+Title = {{Visual Geometry Group - Department of Engineering Science, University of Oxford}},
+howpublished = {\url{https://www.robots.ox.ac.uk/~vgg/}}
+}
+
+@misc{imagenetDb,
+Title = {{The ImageNet database}},
+howpublished = {\url{http://www.image-net.org}}
+}
+
+@misc{veryDeepCnnOxford,
+Title = {{Very Deep Convolutional Networks for Large-Scale Visual Recognition - Overview}},
+howpublished = {\url{http://www.robots.ox.ac.uk/~vgg/research/very_deep/}},
+Year = {2014}
+}
+
+@misc{veryDeepCnnPaper,
+Title = {{Very Deep Convolutional Networks for Large-Scale Visual Recognition - Paper}},
+howpublished = {\url{https://arxiv.org/pdf/1409.1556.pdf}},
+Year = {2014}
+}
+
+@misc{LBFGSBalgo,
+Title = {{Limited-memory BFGS - Wikipedia}},
+howpublished = {\url{https://en.wikipedia.org/wiki/Limited-memory_BFGS#L-BFGS-B}}
+}
+
+@misc{emba,
+Title = {{ESSEC\&Mannheim EMBA}},
+howpublished = {\url{https://www.mannheim-business-school.com/en/mba-master/essec-mannheim-executive-mba/program-structure/}}
+}
+
+@misc{leadershipPrgm,
+Title = {{Saint-Cyr Executive Education}},
+howpublished = {\url{http://www.scyfco.fr/?lang=en}}
+}
+
+@misc{spacex,
+Title = {{SpaceX - designs, manufactures and launches advanced rockets and spacecraft.}},
+howpublished = {\url{https://www.spacex.com/}}
+}
+
+@misc{grab,
+Title = {{Grab - Transport, Food Delivery \& Payment Solutions}},
+howpublished = {\url{https://www.grab.com/}}
+}
+
+@misc{artisticStyleNeuralAlgo,
+Title = {{A Neural Algorithm of Artistic Style}},
+howpublished = {\url{https://arxiv.org/pdf/1508.06576.pdf}},
+Year = {2018},
+Month = {August}
+}
+
+@misc{beachStyleImage,
+Title = {{Beach style picture - pixabay.com}},
+howpublished = {\url{https://cdn.pixabay.com/photo/2014/04/26/04/25/fitness-332278_960_720.jpg}}
+}
+
+@misc{snowyWoodStyleImage,
+Title = {{Snowy wood style picture - pixabay.com}},
+howpublished = {\url{https://cdn.pixabay.com/photo/2017/08/06/15/20/people-2593421_960_720.jpg}}
+}
+
+@misc{rstudioKerasNamingLocationObjects,
+Title = {{rstudio/keras - Naming and locating objects in images}},
+howpublished = {\url{https://blogs.rstudio.com/tensorflow/posts/2018-11-05-naming-locating-objects/}}
+}
+
+@misc{rstudioKerasObjectDetectionConcept,
+Title = {{rstudio/keras - Concepts in object detection}},
+howpublished = {\url{https://blogs.rstudio.com/tensorflow/posts/2018-12-18-object-detection-concepts/}}
+}
+
+@misc{selfDrivingRobotCNN,
+Title = {{A Self-Driving Robot Using Deep Convolutional Neural Networks on Neuromorphic Hardware}},
+howpublished = {\url{https://arxiv.org/pdf/1611.01235.pdf}},
+Year = {2016},
+Month = {November}
+}
+
+@misc{selfDrivingCarCNN,
+Title = {{End to End Learning for Self-Driving Cars - NVIDIA Corporation}},
+howpublished = {\url{https://becominghuman.ai/self-driving-cars-deep-neural-networks-and-convolutional-neural-networks-applied-to-clone-driving-ee2c623ac9b5}},
+Year = {2016},
+Month = {April}
+}
+
+@misc{aiChipsetManufacturers,
+Title = {{8 Powerful AI Chips Challenging NVIDIA’s Dominance In Computing Industry}},
+howpublished = {\url{https://www.analyticsindiamag.com/8-powerful-ai-chips-challenging-nvidias-dominance-in-computing-industry/}},
+Year = {2018},
+Month = {December}
+}
+
+@misc{quantumCoinToss,
+Title = {{An introduction to quantum coin-tossing}},
+howpublished = {\url{https://arxiv.org/pdf/quant-ph/0206088.pdf}},
+Year = {2018},
+Month = {December}
+}
+
+@misc{quantumComputTedX,
+Title = {{Quantum computing explained in 10 minutes - TEDWomen}},
+Author = {Shohini GHOSE},
+howpublished = {\url{https://www.ted.com/talks/shohini_ghose_quantum_computing_explained_in_10_minutes/transcript?language=en}},
+Year = {2018},
+Month = {November }
+}
+
+\end{filecontents*}
+
+
+<!--
+amc_pdf_print()
+-->
+
+
+
+
+ 
+ 
+
+
+<!--
+
+# Get a normal footnote in a minipage environment in LaTeX :
+# @see 'https://tex.stackexchange.com/questions/274/can-i-get-a-normal-footnote-in-a-minipage-environment-in-latex-how'
+
+# LaTeX / Colors
+# @see 'https://en.wikibooks.org/wiki/LaTeX/Colors'
+
+# LaTeX /  Command Summary
+# @see 'https://www.bu.edu/math/files/2013/08/LongTeX1.pdf'
+
+# Increase line/row spacing with kableExtra :
+# @see 'https://stackoverflow.com/questions/53794142/increase-line-row-spacing-with-kableextra'
+
+-->
+
+
+
+<!--
+amc_pdf_print()
+-->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

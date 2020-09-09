@@ -1,6 +1,6 @@
 ---
 title: |
-  | \pagenumbering{gobble} <!-- ends page numbering "`r Sys.Date()`" -->\vspace{3.5in}Entry-level Convolutional Neural Networks 
+  | \pagenumbering{gobble} <!-- ends page numbering "`r Sys.Date()`" -->\vspace{3.5in}Image Processing with Convolutional Neural Networks 
   | _\LARGE(keras with 'tensorflow over local GPU' as a back-end in R)\normalsize_
 subtitle: "Stepping into CNN, one toe at a time"
 date: "2019-04-29"
@@ -279,14 +279,14 @@ Adding convolutional layers to a neural network is what turns it into a convolut
 CNNs find applications in **time series forecasting** as it is very good at finding local patterns[@cnnWebTrafficForecasting] but \underline{\makebox[0.1in][l]{R}}eccurent \underline{\makebox[0.1in][l]{N}}eural \underline{\makebox[0.1in][l]{N}}etworks are often preferred when data has a sequential structure[@rstudioKerasRnnSunspot][@rstudioKerasRnnTemperature].  
 CNNs (when on top of pre-trained word vectors[^id_529]) are often used in **Natural Language Processing (NLP)** for instance for sentence classification[@cnnSentenceClassif].  
 CNNs can also be employed for **speech recognition**, i.e. recognizing and extracting words/sentences/intonations from within audio data[@cnnSpeechRecognition].  
-Convolutional Neural Networks have become the dominant machine learning approach for **visual object recognition**. In the herein report, we cover two such cases&nbsp;:
+Foremost, Convolutional Neural Networks have become the dominant machine learning approach for **visual object recognition**. In the herein report, we cover two such cases&nbsp;:
 
 * object classification on the cifar-10 images dataset (see the [Objects classification section](#objectsClassifAnchor))
-* style tranfer on one of my personal picture (see the [Style transfer section](#styleTransferAnchor))
+* style tranfer on one of my personal pictures (see the [Style transfer section](#styleTransferAnchor))
 
 
 
-[^id_749]: note that the rstudio/kears package comes with the implementation of many different types layers (Convolutional, Dropout, Recurrent, etc.)&nbsp;: [@rstudioKerasLayers].
+[^id_749]: note that the rstudio/kears package comes with the implementation of many different types of layers (Convolutional, Dropout, Recurrent, etc.)&nbsp;: [@rstudioKerasLayers].
 [^id_489]: Neural networks can also be described by the number of hidden nodes the model has or in terms of how many inputs and outputs each node has.
 [^id_582]: if you're keen on getting clarifications on tensors&nbsp;: [@tensorVsMatrix], [@tensorMlVsMath].
 [^id_777]: for more on CNNs, check out this great _edutainment_ post&nbsp;: [@cnnUltimateGuide].
@@ -1033,7 +1033,7 @@ _Specificity_ and _sensitivity_, between the two of them, reflect very well the 
 * A class **precision**, also called **\underline{\makebox[0.1in][l]{P}}ositive \underline{\makebox[0.1in][l]{P}}redictive \underline{\makebox[0.1in][l]{V}}alue (PPV)**, doesn't bring additionnal information compared to the first two performance metrics. It is another way to present it. It in fact corresponds to the proportion of items classified as belonging to that class that are truly elements of that class. E.g. `r scales::percent( confusion_byClass_df$Precision[ 1 ] )` of items classfied as being `r paste0( confusion_byClass_df$class[ 1 ], "s" )` are indeed `r paste0( confusion_byClass_df$class[ 1 ], "s" )`  
 
 \small
-Alternatively to _Specificity_ and _sensitivity_, _Precision_ and _recall_, are also often refered to together in statistics and machine learning literrature.  
+Alternatively to _Specificity_ and _sensitivity_, _Precision_ and _recall_ are also often refered to together in statistics and machine learning literrature.  
 _Class recall_ can be thought of as a measure of how often a model is able to find elements of that given class when looking for one.  
 _Class precision_ can be thought of as a measure of how "believable" a model is when it says an item is of that particular class.
 \normalsize
@@ -1080,7 +1080,7 @@ knitr::kable(
 amc_pdf_print()
 -->
 
-As we can see table \ref{tab:tab_metrics}, the performance of our object classification model is excellent but, for the sake of argument, let us remark that `r ifelse( mean( confusion_byClass_df$Specificity ) > mean( confusion_byClass_df$Sensitivity ), "_sensitivity_ is on average lower than _specificity_", "_specificity_ is on average lower than _sensitivity_" )` with our trained model. Since it is the class with lesser _specificity_ with a value of `r scales::percent( min( confusion_byClass_df$Sensitivity ), accuracy = .1 )`, lets look into images of class `r paste0( "\"", least_well_classified_class, "\"" )` and see how our model has classified the `r paste0( least_well_classified_class, "s" )` images of the validation set&nbsp;:
+As we can see table \ref{tab:tab_metrics}, the performance of our object classification model is excellent but, for the sake of argument, let us remark that `r ifelse( mean( confusion_byClass_df$Specificity ) > mean( confusion_byClass_df$Sensitivity ), "_sensitivity_ is on average lower than _specificity_", "_specificity_ is on average lower than _sensitivity_" )` with our trained model. Since it is the class with lesser _sensitivity_ with a value of `r scales::percent( min( confusion_byClass_df$Sensitivity ), accuracy = .1 )`, lets look into images of class `r paste0( "\"", least_well_classified_class, "\"" )` and see how our model has classified the `r paste0( least_well_classified_class, "s" )` images of the validation set&nbsp;:
 
 ```{r echo = FALSE }
 cifar10_confusion_matrix$table %>% as_tibble %>%
@@ -1168,7 +1168,7 @@ amc_pdf_print()
 #######################################
 ```
 
-The will to investigate this part of the Machine Learning applications to Image Processing for the herein report has originally been triggered by coming accros this post by Chintan TRIVEDI on **towardsdatascience.com**&nbsp;: "Turning Fortnite into PUBG with Deep Learning (CycleGAN)"[@fortnitePubg].  
+The will to investigate this part of the Machine Learning applications to Image Processing for the herein report has originally been triggered by coming across this post by Chintan TRIVEDI on **towardsdatascience.com**&nbsp;: "Turning Fortnite into PUBG with Deep Learning (CycleGAN)"[@fortnitePubg].  
 The author there uses hypophora, a figure of speech in which a writer raises a question and then immediately provides an answer to that question. He went on with the following&nbsp;:
 
 > Can we have graphics mods for games that can allow us to choose the visual effects of our liking without having to rely on the game developers providing us that option?
@@ -1227,11 +1227,11 @@ Finally, we set our gradients and minimize our global loss (which is a combinati
 Back in 2016-2017, in the frame of the **ESSEC&Mannheim EMBA** I pursued[@emba], we had several exciting opportunities to widen our horizons.
 We for instance followed the **Leadership Training program at Saint-Cyr Coëtquidan**[@leadershipPrgm]. We also had several business residencies worldwide. We went to **UCLA** (California, U.S.), to the **Indian Institute of Management Ahmedabad** (Gujarat, India), to the **ESSEC Asia-Pacific** campus (Singapore), as well as to **Mannheim Business School** (Germany). During these residencies, we visited several very exciting companies such as **SpaceX**[@spacex] and **Grab**[@grab]. Those are all great memories.
 
-To illsutrate the capabilities of our _style transfer_ model, we use a picture of me taken in the luxurious alleys of the IIM Ahmedabad campus as the "original content" picture.  
-We'll go over two distinct examples and apply two very different styles to that picture. We'll generate each time a brand new image, with the content from the 'original content' picture and the style from the 'new style' picture[^id_452]. Those two examples consist in applying a _beach_ style on one hand and a _snowy wood_ style on the other.  
+To illustrate the capabilities of our _style transfer_ model, we use a picture of me taken in the luxurious alleys of the IIM Ahmedabad campus as the "original content" picture.  
+We'll showcase two distinct examples and apply two very different styles to that picture. We'll generate each time a brand new image, with the content from the 'original content' picture and the style from the 'new style' picture[^id_452]. Those two examples consist in applying a _beach_ style on one hand and a _snowy wood_ style on the other.  
 As can be seen on the respective figures \ref{fig:fig_beach_style} &  \ref{fig:fig_snowy_wood_style}, the smallest details from the "original content" are not all grasped by the algorithm but the main components (character in a particular position with landscape characteristics such as the presence of a building at the right in the background) are captured efficiently in the generated new image.
 
-The results are estonishing.
+The results are astonishing.
 
 It takes no longer than a couple minutes in processing time for the _style tranfer_ algorithm each time to iteratively come up with the results.
 
@@ -1356,7 +1356,7 @@ Todays' entrepreneurs have a chance to see Deep Learning as a toolset that provi
 Deep Learning is a very dynamic field. Contrarily to other areas where research is concentrated in academic spheres, machine learning gained a lot of private traction in the recent years due to its many applications and promises. Deep learning and Convolutional Neural Networks are not exempt from that phenomenon. It is for instance hard to ignore the potential applications of CNN to the field of computer vision for self-driving cars development[@selfDrivingRobotCNN][@selfDrivingCarCNN]. And that's just on the algorithm front.
 
 Hardware manufacturers are competing fiercly, trying to elbow their way through providing the best AI chispset[@aiChipsetManufacturers]. But the future is knocking at our doors already with the advancements made in quantum computing.  
-The concept of indeterminacy (indefinite state) from Quatum physics offers a whole world of new possibilities when applied to machine learning ; going from Classical to Quantum predictions as summarized by the famous "quantum coin toss" problem[@quantumCoinToss] is a near-future game changer. This was brilliantly articulated in her recent TED Talk by Dr. Shohini GHOSE&nbsp;: "Quantum computing explained in 10 minutes"[@quantumComputTedX]. Quantum computers are there depicted as unbeatable champions with, in the end, what could be perceived as psychic-like superpowers.
+The concept of indeterminacy (indefinite state) from Quatum physics offers a whole world of new possibilities when applied to machine learning ; going from Classical to Quantum predictions (as summarized by the famous "quantum coin toss" problem[@quantumCoinToss]) is a near-future game changer. This was brilliantly articulated in her recent TED Talk by Dr. Shohini GHOSE&nbsp;: "Quantum computing explained in 10 minutes"[@quantumComputTedX]. Quantum computers are there depicted as unbeatable champions with, in the end, what could be perceived as psychic-like superpowers.
 
 Ideas like that, I certainly find invigorating.
 
